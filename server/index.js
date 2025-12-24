@@ -1,4 +1,5 @@
 import express from 'express';
+import axios from 'axios';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
@@ -157,6 +158,174 @@ ${code}`;
   } catch (error) {
     console.error("Error generating question:", error);
     res.status(500).json({ error: 'Failed to generate question. Check server logs.' });
+  }
+});
+
+// Helper: Grade with AI
+async function gradeWithAI(teacherCode, studentCode, question) {
+  try {
+    const prompt = `
+Context: Use the following problem statement and teacher's solution to grade the student's submission.
+Problem: ${question}
+Teacher's Solution:
+${teacherCode}
+
+Student's Submission:
+${studentCode || "NO CODE FOUND"}
+
+Task:
+Compare the student's code logic against the teacher's code and the problem requirements.
+Assign a score from 0 to 100.
+Provide a very short 1-sentence reason.
+
+Output JSON ONLY:
+{ "marks": number, "feedback": "string" }
+`;
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        "model": "mistralai/devstral-2512:free",
+        "messages": [{ "role": "user", "content": prompt }]
+      })
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+        console.error("AI Grading API Error:", data);
+        return { marks: 0, feedback: "AI Service Error" };
+    }
+
+    const content = data.choices[0].message.content;
+    
+    // Parse JSON from AI response (handle potential markdown wrapping)
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return { marks: 0, feedback: "Failed to parse AI response" };
+
+  } catch (error) {
+    console.error("AI Grading Error:", error);
+    return { marks: 0, feedback: "AI Error" };
+  }
+}
+
+app.post('/api/grade-students', async (req, res) => {
+  try {
+    const { teacherCode, students, question } = req.body;
+
+    if (!teacherCode || !students || !Array.isArray(students)) {
+      return res.status(400).json({ error: 'Missing teacherCode or students list.' });
+    }
+
+    // Determine extension (e.g., .py, .js)
+    // Simple heuristic: check first line or use default. User didn't specify, so let's guess based on teacher code?
+    // Actually, passing extension from frontend might be better, but let's infer for now.
+    // Let's assume most are simple scripts. We'll look for *any* code file. 
+    // Wait, the plan said "Identify target file extension from Teacher Code". 
+    // Since we don't know the language, let's try to match ANY file that looks like code? 
+    // Or better: Let's blindly search for ANY file that is not readme/license. 
+    // Refinement: Python if teacher code has 'def ' or 'import ', JS if 'function ' or 'const '.
+    // For simplicity, let's try to find a file with the SAME extension as the student's repo language? 
+    // GitHub API returns 'language' in repo details, but we are listing contents.
+    // Let's blindly get the first file that ends in .js, .py, .cpp, .java, .c.
+    
+    // Better logic: Just fetch the first non-markdown file for now.
+    const extensions = ['.js', '.py', '.cpp', '.java', '.c', '.ts', '.html', '.css'];
+    
+    // Using Promise.all to process in parallel
+    const gradedStudents = await Promise.all(students.map(async (student) => {
+      let studentCode = null;
+      let marks = 0;
+      let feedback = "Repo empty or not found";
+      let gradedFileUrl = null;
+
+      // 1. Fetch
+      // We need to guess extension. Let's try to find any valid source file in the root.
+      // This helper needs to be smarter or we iterate.
+      // Let's update helper to just return the first code file it finds.
+       try {
+          const parts = student.repoUrl.split('github.com/');
+          if (parts.length >= 2) {
+            const [owner, repo] = parts[1].split('/').filter(Boolean);
+            const { data } = await axios.get(`https://api.github.com/repos/${owner}/${repo}/contents`);
+            if (Array.isArray(data)) {
+                 // Filter for all potential code files
+                 const codeFiles = data.filter(f => extensions.some(ext => f.name.endsWith(ext)));
+                 
+                 let codeFile = null;
+
+                 if (codeFiles.length === 0) {
+                    // No code files found
+                 } else if (codeFiles.length === 1) {
+                    codeFile = codeFiles[0];
+                 } else {
+                    // Multiple files: Find the most recently updated one
+                    try {
+                        const filesWithDates = await Promise.all(codeFiles.map(async (f) => {
+                            try {
+                                const commitRes = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits?path=${f.path}&per_page=1`);
+                                const dateStr = commitRes.data[0]?.commit?.committer?.date;
+                                return { ...f, lastUpdated: dateStr ? new Date(dateStr) : new Date(0) };
+                            } catch (err) {
+                                // If commit fetch fails (e.g. rate limit), assume old date
+                                return { ...f, lastUpdated: new Date(0) };
+                            }
+                        }));
+                        
+                        // Sort descending (newest first)
+                        filesWithDates.sort((a, b) => b.lastUpdated - a.lastUpdated);
+                        codeFile = filesWithDates[0];
+                        console.log(`Selected latest file for ${student.name}: ${codeFile.name} (${codeFile.lastUpdated})`);
+                    } catch (err) {
+                        // Fallback to first file if sorting fails
+                        console.error(`Error checking dates for ${student.name}, falling back to first file.`);
+                        codeFile = codeFiles[0];
+                    }
+                 }
+
+                 if (codeFile) {
+                    const raw = await axios.get(codeFile.download_url);
+                    studentCode = typeof raw.data === 'string' ? raw.data : JSON.stringify(raw.data);
+                    gradedFileUrl = codeFile.html_url;
+                 }
+            }
+          }
+       } catch (e) { 
+          if (e.response) {
+            console.log(`Fetch error for ${student.name}: Status ${e.response.status} - ${JSON.stringify(e.response.data)}`);
+          } else {
+            console.log(`Fetch error for ${student.name}: ${e.message}`);
+          }
+       }
+
+      // 2. Grade
+      if (studentCode) {
+        const result = await gradeWithAI(teacherCode, studentCode, question);
+        marks = result.marks;
+        feedback = result.feedback;
+      }
+
+      return {
+        ...student,
+        marks,
+        feedback,
+        gradedFileUrl,
+        gradedAt: new Date().toISOString()
+      };
+    }));
+
+    res.json({ students: gradedStudents });
+
+  } catch (error) {
+    console.error("Batch Grading Error:", error);
+    res.status(500).json({ error: 'Grading failed.' });
   }
 });
 

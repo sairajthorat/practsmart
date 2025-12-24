@@ -46,8 +46,40 @@ const Handson = () => {
     }
   };
 
-  const handleReview = () => {
-    console.log('Reviewing question...');
+  const handleReview = async () => {
+    if (!code.trim() || !question) {
+        alert("Please generate a question first by entering code and clicking Go.");
+        return;
+    }
+    
+    setLoading(true); // Re-use loading or create new state 'reviewing'
+    try {
+        const response = await fetch('http://localhost:5000/api/grade-students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                teacherCode: code, 
+                students, 
+                question 
+            }),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.students) {
+            setStudents(data.students); 
+            // Also update local storage so marks persist?
+            localStorage.setItem('practsmart_students', JSON.stringify(data.students));
+        } else {
+            console.error(data.error);
+            alert("Grading failed: " + data.error);
+        }
+    } catch (error) {
+        console.error("Review error:", error);
+        alert("Failed to connect to grading server.");
+    } finally {
+        setLoading(false);
+    }
   };
 
   return (
@@ -88,20 +120,22 @@ const Handson = () => {
             </div>
             
             {/* Review Button */}
-            <div className="absolute bottom-8 right-8">
+            <div className="absolute bottom-6 right-6">
                  <Button 
                     onClick={handleReview}
-                    className="bg-[#5c7cfa] hover:bg-[#4c6ef5] text-white shadow-lg"
+                    disabled={loading}
+                    className="bg-[#5c7cfa] hover:bg-[#4c6ef5] text-white shadow-lg disabled:opacity-50"
                  >
-                    Review
+                    {loading ? 'Grading...' : 'Review'}
                  </Button>
             </div>
         </div>
 
         {/* Bottom Section: Student List Grid */}
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-900">
-          <h3 className="text-sm font-semibold text-slate-400 mb-4 sticky top-0 bg-slate-900 py-2 z-10">
-            Students ({students.length})
+          <h3 className="text-sm font-semibold text-slate-400 mb-4 sticky top-0 bg-slate-900 py-2 z-10 flex justify-between items-center">
+            <span>Students ({students.length})</span>
+            {loading && <span className="text-xs text-blue-400 animate-pulse">Processing...</span>}
           </h3>
           
           {students.length === 0 ? (
@@ -112,12 +146,25 @@ const Handson = () => {
             <div className="grid grid-cols-2 gap-3">
                 {students.map((student) => {
                 const { owner } = parseGithubUrl(student.repoUrl) || { owner: 'user' };
+                const hasMarks = typeof student.marks === 'number';
+                
                 return (
                     <div 
                     key={student.id} 
-                    className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-lg p-3 transition-colors cursor-pointer group flex items-center gap-3"
+                    onClick={() => {
+                        const url = student.gradedFileUrl || student.repoUrl;
+                        if (url) window.open(url, '_blank');
+                    }}
+                    className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-lg p-3 transition-colors cursor-pointer group flex items-start gap-3 relative overflow-hidden"
                     >
-                        <div className="h-8 w-8 rounded-full bg-slate-700 overflow-hidden flex-shrink-0">
+                        {/* Progress Bar / Marks Indicator */}
+                        {hasMarks && (
+                           <div 
+                             className={`absolute left-0 top-0 bottom-0 w-1 ${student.marks >= 80 ? 'bg-green-500' : student.marks >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                           />
+                        )}
+
+                        <div className="h-8 w-8 rounded-full bg-slate-700 overflow-hidden flex-shrink-0 mt-1">
                             <img 
                             src={`https://github.com/${owner}.png`} 
                             alt={owner}
@@ -126,12 +173,26 @@ const Handson = () => {
                             />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors">
-                            {student.name}
-                            </p>
-                            <p className="text-xs text-slate-500 truncate">
+                            <div className="flex justify-between items-start">
+                                <p className="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors">
+                                {student.name}
+                                </p>
+                                {hasMarks && (
+                                   <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${student.marks >= 80 ? 'bg-green-900/50 text-green-400' : 'bg-slate-700 text-slate-300'}`}>
+                                     {student.marks}
+                                   </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-500 truncate mb-1">
                             @{owner}
                             </p>
+                            
+                            {/* Feedback Snippet */}
+                            {student.feedback && (
+                                <p className="text-[10px] text-slate-400 leading-tight line-clamp-2">
+                                    {student.feedback}
+                                </p>
+                            )}
                         </div>
                     </div>
                 );
