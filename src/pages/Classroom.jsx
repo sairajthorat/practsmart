@@ -3,7 +3,7 @@ import { Github } from 'lucide-react'; // Keep for header if needed, but we used
 import AddStudentModal from '../components/AddStudentModal';
 import StudentCard from '../components/StudentCard';
 
-const Dashboard = () => {
+const Classroom = () => {
   const [students, setStudents] = useState(() => {
     const saved = localStorage.getItem('practsmart_students');
     return saved ? JSON.parse(saved) : [];
@@ -22,24 +22,8 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-950/50 backdrop-blur sticky top-0 z-10">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="PractSmart Logo" className="h-8 w-8 object-contain" />
-            <span className="font-bold text-lg tracking-tight">PractSmart</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Placeholder for future specific header items */}
-            <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700"></div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {students.length === 0 ? (
+    <div className="container mx-auto px-4 py-8">
+      {students.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
                 <div className="p-4 rounded-full bg-slate-800/50 border border-slate-700">
                     <Github className="h-12 w-12 text-slate-500" />
@@ -60,12 +44,10 @@ const Dashboard = () => {
                 ))}
             </div>
         )}
-      </main>
-
       {/* Floating Action Button */}
       <AddStudentModal onAddStudent={handleAddStudent} />
     </div>
   );
 };
 
-export default Dashboard;
+export default Classroom;
