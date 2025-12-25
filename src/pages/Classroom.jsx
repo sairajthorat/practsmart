@@ -1,24 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { Github } from 'lucide-react'; // Keep for header if needed, but we used img for logo
+import { supabase } from '../supabaseClient';
 import AddStudentModal from '../components/AddStudentModal';
 import StudentCard from '../components/StudentCard';
+import { Github } from 'lucide-react';
 
 const Classroom = () => {
-  const [students, setStudents] = useState(() => {
-    const saved = localStorage.getItem('practsmart_students');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [students, setStudents] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem('practsmart_students', JSON.stringify(students));
-  }, [students]);
+    fetchStudents();
+  }, []);
 
-  const handleAddStudent = (student) => {
-    setStudents((prev) => [student, ...prev]);
+  const fetchStudents = async () => {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) console.error('Error fetching students:', error);
+    else setStudents(data.map(s => ({ ...s, repoUrl: s.repo_url, addedAt: s.created_at })));
   };
 
-  const handleDeleteStudent = (id) => {
-    setStudents((prev) => prev.filter((s) => s.id !== id));
+  const handleAddStudent = async (student) => {
+    // Determine marks, feedback, etc. usually null at start
+    const newStudent = {
+      name: student.name,
+      repo_url: student.repoUrl
+    };
+
+    const { data, error } = await supabase.from('students').insert([newStudent]).select();
+
+    if (error) {
+        console.error('Error adding student:', error);
+        alert('Failed to add student to database.');
+    } else {
+        // Optimistic update or refetch
+        if (data && data.length > 0) {
+            const added = data[0];
+            setStudents((prev) => [{ ...added, repoUrl: added.repo_url, addedAt: added.created_at }, ...prev]);
+        }
+    }
+  };
+
+  const handleDeleteStudent = async (id) => {
+    const { error } = await supabase.from('students').delete().eq('id', id);
+    if (error) {
+        console.error('Error deleting student:', error);
+        alert('Failed to delete student.');
+    } else {
+        setStudents((prev) => prev.filter((s) => s.id !== id));
+    }
   };
 
   return (

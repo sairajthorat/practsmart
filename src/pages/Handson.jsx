@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Play } from 'lucide-react';
 import { parseGithubUrl } from '../utils/validators';
+import { supabase } from '../supabaseClient';
 
 const Handson = () => {
   const [code, setCode] = useState('');
@@ -10,11 +11,18 @@ const Handson = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('practsmart_students');
-    if (saved) {
-      setStudents(JSON.parse(saved));
-    }
+    fetchStudents();
   }, []);
+
+  const fetchStudents = async () => {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) console.error('Error fetching students:', error);
+    else setStudents(data.map(s => ({ ...s, repoUrl: s.repo_url, addedAt: s.created_at })));
+  };
 
   const handleGo = async () => {
     if (!code.trim()) return;
@@ -23,7 +31,7 @@ const Handson = () => {
     setQuestion('Generating question...');
     
     try {
-      const response = await fetch('http://localhost:5000/api/generate-question', {
+      const response = await fetch('/api/generate-question', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -52,9 +60,9 @@ const Handson = () => {
         return;
     }
     
-    setLoading(true); // Re-use loading or create new state 'reviewing'
+    setLoading(true);
     try {
-        const response = await fetch('http://localhost:5000/api/grade-students', {
+        const response = await fetch('/api/grade-students', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -67,9 +75,20 @@ const Handson = () => {
         const data = await response.json();
         
         if (response.ok && data.students) {
-            setStudents(data.students); 
-            // Also update local storage so marks persist?
-            localStorage.setItem('practsmart_students', JSON.stringify(data.students));
+            const gradedStudents = data.students;
+            setStudents(gradedStudents);
+            
+            // Save grades to Supabase
+            const updates = gradedStudents.map(s => ({
+                id: s.id,
+                marks: s.marks,
+                feedback: s.feedback,
+                // last_graded_at: new Date() // if column exists
+            }));
+            
+            const { error } = await supabase.from('students').upsert(updates);
+            if (error) console.error('Error saving grades:', error);
+
         } else {
             console.error(data.error);
             alert("Grading failed: " + data.error);

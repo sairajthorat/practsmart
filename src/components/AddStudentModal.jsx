@@ -45,14 +45,14 @@ const AddStudentModal = ({ onAddStudent }) => {
       return;
     }
 
-    const newStudent = {
-      id: crypto.randomUUID(),
-      name,
-      repoUrl,
-      addedAt: new Date().toISOString(),
-    };
+  	  const newStudent = {
+	    // id: crypto.randomUUID(), // Let DB handle ID
+	    name,
+	    repoUrl,
+	    // addedAt: new Date().toISOString(), // Let DB handle Date
+	  };
 
-    onAddStudent(newStudent);
+	  await onAddStudent(newStudent); // Await incase it's async now
     
     setIsLoading(false);
     setOpen(false);
