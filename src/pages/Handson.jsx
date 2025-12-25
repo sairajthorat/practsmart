@@ -113,14 +113,14 @@ const Handson = () => {
       <div className="flex flex-col h-full bg-slate-900 min-h-0">
         
         {/* Top Section: Question Card */}
-        <div className="h-64 bg-[#5c7cfa]/10 border-b border-slate-700 p-6 relative flex flex-col">
+        <div className="h-52 bg-[#5c7cfa]/10 border-b border-slate-700 p-6 relative flex flex-col">
             <h2 className="text-xl font-bold text-slate-100 mb-2">Question</h2>
             <div className="flex-1 bg-slate-800/50 rounded-lg p-4 text-slate-300 text-sm overflow-y-auto custom-scrollbar border border-slate-700/50">
                 <p>{question || 'Paste code and click Go to generate a question.'}</p>
             </div>
             
             {/* Review Button */}
-            <div className="absolute bottom-6 right-6">
+            <div className="absolute bottom-8 right-8">
                  <Button 
                     onClick={handleReview}
                     disabled={loading}
