@@ -13,7 +13,7 @@ const Layout = () => {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <img src="/P_logo.png" alt="PractSmart Logo" className="h-8 w-8 object-contain" />
+            <img src="/app-logo.png" alt="PractSmart Logo" className="h-8 w-8 object-contain" />
             <span className="font-bold text-lg tracking-tight">PractSmart</span>
           </Link>
 
