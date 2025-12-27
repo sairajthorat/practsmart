@@ -14,7 +14,7 @@ const Layout = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <img src="/app-logo.png" alt="PractSmart Logo" className="h-8 w-8 object-contain" />
-            <span className="font-bold text-lg tracking-tight">PractSmart:/</span>
+            <span className="font-bold text-lg tracking-tight">PractSmart</span>
           </Link>
 
           {/* Navigation Links */}
@@ -23,7 +23,7 @@ const Layout = () => {
               to="/" 
               className={`text-sm font-medium transition-colors hover:text-white ${isActive('/') ? 'text-white' : 'text-slate-400'}`}
             >
-              My Classroom
+              My Classrooms
             </Link>
             <Link 
               to="/handson" 

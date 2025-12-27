@@ -64,7 +64,7 @@ const AddStudentModal = ({ onAddStudent }) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="rounded-full w-14 h-14 bg-[#2da44e] hover:bg-[#2c974b] shadow-lg fixed bottom-8 right-8 flex items-center justify-center p-0">
+        <Button className="rounded-full w-14 h-14 bg-[#2da44e] hover:bg-[#2c974b] shadow-lg fixed bottom-8 right-8 flex items-center justify-center p-0 z-[60]">
           <Plus className="h-8 w-8 text-white" />
         </Button>
       </DialogTrigger>
