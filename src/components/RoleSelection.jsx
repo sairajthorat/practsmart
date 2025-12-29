@@ -49,7 +49,7 @@ const RoleSelection = ({ onSelectRole }) => {
             Login as Student
           </Button>
           */}
-          
+
           <Button 
             className="w-full h-14 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-purple-500/50 text-slate-200 hover:text-white justify-start px-6 text-lg transition-all group"
             onClick={() => onSelectRole('demo')}
@@ -62,11 +62,11 @@ const RoleSelection = ({ onSelectRole }) => {
 
 
         </div>
-        
+        {/*
         <p className="text-xs text-center text-slate-500 pt-4">
             Select "Demo Login" for visitor access.
         </p>
-        
+        */}
       </div>
     </div>
   );
