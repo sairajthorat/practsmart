@@ -25,9 +25,17 @@ const CreateClassroomModal = ({ onClassroomCreated }) => {
     setLoading(true);
     setError(null);
 
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      setError("You must be logged in to create a classroom.");
+      setLoading(false);
+      return;
+    }
+
     const { data, error: insertError } = await supabase
       .from('classrooms')
-      .insert([{ name }])
+      .insert([{ name, teacher_id: user.id }])
       .select();
 
     if (insertError) {

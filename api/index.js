@@ -142,6 +142,30 @@ async function fetchLatestCode(owner, repo) {
 
 // --- Routes ---
 
+app.post('/api/check-repo', async (req, res) => {
+  try {
+    const { owner, repo } = req.body;
+    if (!owner || !repo) {
+       return res.status(400).json({ error: 'Owner and repo are required' });
+    }
+    
+    // Use existing helper with token logic
+    try {
+        await axios.get(`https://api.github.com/repos/${owner}/${repo}`, getGithubHeaders());
+        res.json({ exists: true });
+    } catch (error) {
+        if (error.response && error.response.status === 404) {
+             res.json({ exists: false });
+        } else {
+             throw error; 
+        }
+    }
+  } catch (error) {
+    console.error("Repo Check Error:", error.message);
+    res.status(500).json({ error: 'Failed to check repository' });
+  }
+});
+
 app.post('/api/generate-question', async (req, res) => {
   try {
     const { code } = req.body;
