@@ -57,7 +57,7 @@ const RoleSelection = ({ onSelectRole }) => {
             <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center mr-4 group-hover:bg-purple-500/30 transition-colors">
                 <User className="h-5 w-5 text-purple-400" />
             </div>
-            Demo Login sairaj Thoart
+            Demo Login sairaj
           </Button>
 
 
