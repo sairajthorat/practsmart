@@ -4,6 +4,6 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "git": {
-    "ignoreCommand": "bash ignore-build.sh"
+    "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then echo \"Skipping deployment for branch $VERCEL_GIT_COMMIT_REF\"; exit 0; else echo \"Deploying main branch\"; exit 1; fi"
   }
 }
